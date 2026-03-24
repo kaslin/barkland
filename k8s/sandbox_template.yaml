@@ -2,14 +2,14 @@ apiVersion: extensions.agents.x-k8s.io/v1alpha1
 kind: SandboxTemplate
 metadata:
   name: dog-agent-template
-  namespace: barkland
+  namespace: ${NAMESPACE}
 spec:
   podTemplate:
     spec:
       runtimeClassName: gvisor # Enables GKE Sandbox (gvisor) on Autopilot
       containers:
         - name: agent
-          image: us-central1-docker.pkg.dev/gke-ai-eco-dev/barkland/barkland:latest
+          image: ${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/barkland:latest
           env:
             - name: GEMINI_API_KEY
               valueFrom:

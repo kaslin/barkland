@@ -2,8 +2,8 @@ apiVersion: extensions.agents.x-k8s.io/v1alpha1
 kind: SandboxWarmPool
 metadata:
   name: dog-agent-warmpool
-  namespace: barkland
+  namespace: ${NAMESPACE}
 spec:
-  replicas: 10
+  replicas: ${WARMPOOL_REPLICAS}
   sandboxTemplateRef:
     name: dog-agent-template

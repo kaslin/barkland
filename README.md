@@ -23,6 +23,10 @@ The system consists of the following components:
     *   Assists in routing workspace or communication traffic for active sandboxes.
     *   Typically deployed as part of the core infrastructure.
 
+4.  **Sandbox Warmpools**:
+    *   Pre-provisions a configurable number of Pods to eliminate cold-start latency when agents are launched.
+    *   Maintained automatically to ensure real-time readiness for `SandboxClaims`.
+
 ---
 
 ## 🛠️ Technologies Used
@@ -71,8 +75,16 @@ LOCATION="us-central1"
 CLUSTER_NAME="your-cluster-name"
 NAMESPACE="barkland"
 REPO="barkland"
+WARMPOOL_REPLICAS="10"
 EOF
 ```
+
+If you are using a Gemini API Key rather than Vertex AI Workload Identity, you must also export it in your environment so the deployment script can create the Kubernetes secret:
+
+```bash
+export GEMINI_API_KEY="your-gemini-api-key"
+```
+
 
 ### 2. Simple Build & Apply
 Run the full-cycle deployment script from your repository root:
@@ -86,9 +98,9 @@ chmod +x ./scripts/deploy.sh
 1.  **Sync Credentials**: Authenticates `kubectl` to your target GKE cluster.
 2.  **Namespace**: Checks for and creates the `barkland` namespace.
 3.  **Secrets Management**: Reads `$GEMINI_API_KEY` from your local environment and creates a generic Kubernetes secret (`gemini-api-key`) in the cluster.
-4.  **Build & Push Images**: Executes `./scripts/push-images` to compile your containers and push to Artifact Registry.
-5.  **Manifest Apply**: Overlays the definitions residing inside the `k8s/` directory into the cluster space.
-6.  **Rollout Verification**: Waits for readiness confirmations for critical containers.
+8.  **Build & Push Images**: Executes `./scripts/push-images` to compile your containers and push to Artifact Registry.
+9.  **Manifest Apply**: Employs `envsubst` to inject properties (like `WARMPOOL_REPLICAS` and `NAMESPACE`) from `.configuration` into the YAML definitions (e.g., `k8s/sandbox_warmpool.yaml` and `k8s/sandbox_template.yaml`) before overlaying them into the cluster space.
+10. **Rollout Verification**: Waits for readiness confirmations for critical containers and verifies the `SandboxWarmPool` status.
 
 ---
 

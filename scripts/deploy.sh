@@ -10,7 +10,7 @@ else
     exit 1
 fi
 
-for var in PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO; do
+for var in PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS; do
     if [ -z "${!var}" ]; then
         echo "Error: Required configuration field $var is not set in .configuration"
         exit 1
@@ -53,15 +53,17 @@ if [ ! -f "Dockerfile" ]; then
     exit 1
 fi
 
-# echo "Copying Sandbox Python SDK client..."
-# cp -r ../agent-sandbox/clients/python/agentic-sandbox-client ./agentic-sandbox-client
-
 
 ./scripts/push-images --image-prefix=${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/ --extra-image-tag latest
 
 echo "=== [4/5] Applying Kubernetes Manifests ==="
-kubectl apply -f k8s/
-kubectl rollout restart deployment/barkland-orchestrator -n barkland
+export PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS
+
+for file in k8s/*.yaml; do
+    envsubst '$PROJECT_ID $LOCATION $CLUSTER_NAME $NAMESPACE $REPO $WARMPOOL_REPLICAS' < "$file" | kubectl apply -f -
+done
+
+kubectl rollout restart deployment/barkland-orchestrator -n ${NAMESPACE}
 
 
 echo "=== [5/5] Verifying Deployment Status ==="
