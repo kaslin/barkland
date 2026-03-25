@@ -17,42 +17,37 @@ for var in PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS; do
     fi
 done
 
-if [ ! -d "../agent-sandbox" ]; then
-    echo "=== [0/5] Cloning agent-sandbox from upstream ==="
-    git clone https://github.com/kubernetes-sigs/agent-sandbox ../agent-sandbox
-fi
+echo "=== [1/6] Acquiring GKE cluster credentials ==="
+gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${CLUSTER_LOCATION} --project ${PROJECT_ID}
 
-echo "=== [1/5] Acquiring GKE cluster credentials ==="
-gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${LOCATION} --project ${PROJECT_ID}
-
-echo "=== [2/5] Creating Namespace: ${NAMESPACE} ==="
+echo "=== [2/6] Creating Namespace: ${NAMESPACE} ==="
 kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 
-echo "=== [2a/5] Creating/Updating Gemini API Key Secret ==="
+echo "=== [3/6] Creating/Updating Gemini API Key Secret ==="
 if [ -z "$GEMINI_API_KEY" ]; then
     echo "Warning: GEMINI_API_KEY is not set in environment."
 else
     kubectl create secret generic gemini-api-key --from-literal=GEMINI_API_KEY="${GEMINI_API_KEY}" -n ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
 fi
 
-echo "=== [2b/5] Deploying agent-sandbox Prerequisite ==="
-# Build and Push Controller Image
-(cd ../agent-sandbox && ./dev/tools/push-images --image-prefix=${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/ --controller-only)
-
-# Deploy Controller to Kube
-(cd ../agent-sandbox && ./dev/tools/deploy-to-kube --image-prefix=${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/)
+echo "=== [4/6] Deploying agent-sandbox Prerequisite ==="
+AGENT_SANDBOX_VERSION="v0.2.1"
+echo "Installing Agent Sandbox ${AGENT_SANDBOX_VERSION}..."
+kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${AGENT_SANDBOX_VERSION}/manifest.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/agent-sandbox/releases/download/${AGENT_SANDBOX_VERSION}/extensions.yaml
 
 echo "Enabling extensions mode on agent-sandbox-controller..."
 kubectl patch deployment agent-sandbox-controller \
     -n agent-sandbox-system \
     -p '{"spec": {"template": {"spec": {"containers": [{"name": "agent-sandbox-controller", "args": ["--leader-elect=true", "--extensions=true"]}]}}}}'
 
-echo "=== [3/5] Building and Pushing Barkland Images ==="
+kubectl rollout status deployment/agent-sandbox-controller -n agent-sandbox-system
+
+echo "=== [5/6] Building and Pushing Barkland Images ==="
 if [ ! -f "Dockerfile" ]; then
     echo "Error: deploy.sh must be run from the repository root (e.g., ./scripts/deploy.sh)"
     exit 1
 fi
-
 
 ./scripts/push-images --image-prefix=${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/ --extra-image-tag latest
 
@@ -65,13 +60,11 @@ done
 
 kubectl rollout restart deployment/barkland-orchestrator -n ${NAMESPACE}
 
-
-echo "=== [5/5] Verifying Deployment Status ==="
+echo "=== Verifying Deployment Status ==="
 kubectl rollout status deployment/barkland-orchestrator -n ${NAMESPACE}
 
-echo "=== [6/5] Verifying SandboxWarmPool Status ==="
+echo "=== Verifying SandboxWarmPool Status ==="
 kubectl get sandboxwarmpools -n ${NAMESPACE}
-
 
 echo "=== Barkland Deployment Complete! ==="
 echo "You can check the external IP using:"
