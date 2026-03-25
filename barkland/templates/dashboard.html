@@ -602,7 +602,7 @@
                     data.sandboxes.forEach(sb => {
                         if(sb.status === 'Running') running++;
                         if(sb.status === 'Paused') paused++;
-                        if(sb.status === 'Created') created++;
+                        if(sb.status === 'Creating' || sb.status === 'Bound') created++;
                         
                         const timeStr = new Date().toLocaleTimeString();
                         const line = document.createElement('div');
@@ -610,7 +610,7 @@
                         line.style.marginTop = '4px';
                         let statusColor = '#34A853';
                         if (sb.status === 'Paused') statusColor = '#FBBC04';
-                        if (sb.status === 'Created') statusColor = '#4285F4';
+                        if (sb.status === 'Creating' || sb.status === 'Bound') statusColor = '#4285F4';
 
                         line.innerHTML = `<span class="timestamp">[${timeStr}]</span> 
                             <i class="fa-solid fa-cube" style="color: #94a3b8; font-size: 0.8rem;"></i> 
@@ -818,7 +818,18 @@
         }
 
         async function stopSim() {
-            document.querySelector('.btn-start').disabled = false;
+            const startBtn = document.querySelector('.btn-start');
+            startBtn.disabled = true;
+            startBtn.style.opacity = '0.5';
+            startBtn.style.cursor = 'not-allowed';
+            startBtn.innerHTML = '<i class="fa-solid fa-hourglass-half"></i> Replenishing...';
+            
+            setTimeout(() => {
+                startBtn.disabled = false;
+                startBtn.style.opacity = '1';
+                startBtn.style.cursor = 'pointer';
+                startBtn.innerHTML = '<i class="fa-solid fa-play"></i> Start Sim';
+            }, 5000);
             if (simTimeout) clearTimeout(simTimeout);
             if (countdownInterval) clearInterval(countdownInterval);
             document.getElementById('countdown-timer').style.display = 'none';
