@@ -489,7 +489,7 @@
             <div class="controls" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
                 <div style="display: flex; gap: 12px; align-items: center;">
                     <!-- Counter Input -->
-                    <select id="dog-count" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none; transition: all 0.2s;" onchange="this.blur()">
+                    <select id="dog-count" title="Select how many agent sandboxes to provision. Agent Sandbox dynamically scales secure, isolated environments for each agent." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none; transition: all 0.2s;" onchange="this.blur()">
                         <option value="1">Agents: 1 Dog</option>
                         <option value="4" selected>Agents: 4 Dogs</option>
                         <option value="10">Agents: 10 Dogs</option>
@@ -498,14 +498,14 @@
                         <option value="99">Agents: 99 Dogs</option>
                     </select>
                     
-                    <button class="btn btn-start" onclick="startSim()">
+                    <button class="btn btn-start" title="Start the simulation loop. This provisions Sandbox custom resources via the Orchestrator." onclick="startSim()">
                         <i class="fa-solid fa-play"></i> Start Sim
                     </button>
-                    <button class="btn btn-stop" onclick="stopSim()">
+                    <button class="btn btn-stop" title="Pause the simulation. Agent Sandbox scales down compute for inactive agents to save resources." onclick="stopSim()">
                         <i class="fa-solid fa-pause"></i> Pause Sim
                     </button>
                 </div>
-                <select id="duration-select" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; width: 100%; outline: none;" onchange="this.blur()">
+                <select id="duration-select" title="Set the duration for the simulation. Useful for observing fast scale-up and scale-down of isolated agent environments." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; width: 100%; outline: none;" onchange="this.blur()">
                     <option value="10">Timer: 10 Seconds</option>
                     <option value="30" selected>Timer: 30 Seconds</option>
                     <option value="60">Timer: 60 Seconds</option>
@@ -521,7 +521,7 @@
 
         <!-- Stats -->
         <div class="stats-grid">
-            <div class="glass-card stat-box">
+            <div class="glass-card stat-box" title="Simulation tick counter driving the agent state machine. Each tick evaluates the agents' needs.">
                 <div class="stat-icon" style="background: rgba(66, 133, 244, 0.15); color: #4285F4;">
                     <i class="fa-solid fa-clock"></i>
                 </div>
@@ -530,7 +530,7 @@
                     <div id="tick-val" style="font-size: 1.8rem; font-weight: 800;">0</div>
                 </div>
             </div>
-            <div class="glass-card stat-box">
+            <div class="glass-card stat-box" title="Number of active agent environments running concurrently. Each dog runs in its own secure Kubernetes sandbox.">
                 <div class="stat-icon" style="background: rgba(234, 67, 53, 0.15); color: #EA4335;">
                     <i class="fa-solid fa-shield-cat"></i>
                 </div>
@@ -553,7 +553,7 @@
         </div>
 
         <!-- Sandbox Terminal Monitor -->
-        <div class="glass-card terminal-card" id="sandbox-monitor">
+        <div class="glass-card terminal-card" id="sandbox-monitor" title="Real-time stream of Kubernetes Sandbox Custom Resources. Watch as isolated environments are dynamically provisioned, paused, and resumed.">
             <div class="terminal-header">
                 <div class="terminal-dot" style="background: #EA4335;"></div>
                 <div class="terminal-dot" style="background: #FBBC04;"></div>

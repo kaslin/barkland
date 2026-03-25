@@ -22,7 +22,8 @@ app = FastAPI()
 @app.get("/", response_class=HTMLResponse)
 async def get_dashboard():
     with open("barkland/templates/dashboard.html", "r") as f:
-        return f.read()
+        content = f.read()
+        return HTMLResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 # In-memory Simulation Instance for simplicity
 config = SimulationConfig(num_ticks=500)
