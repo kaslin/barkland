@@ -17,6 +17,10 @@ rules:
     resources: ["sandboxes"]
     verbs: ["get", "list", "watch", "patch", "update", "delete"]
 
+  - apiGroups: ["podsnapshot.gke.io"]
+    resources: ["podsnapshotmanualtriggers", "podsnapshotpolicies", "podsnapshots"]
+    verbs: ["create", "get", "list", "watch", "patch", "update", "delete"]
+
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["get", "list", "watch"]

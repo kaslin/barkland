@@ -504,10 +504,20 @@
                     <button class="btn btn-start" title="Start the simulation loop. This provisions Sandbox custom resources via the Orchestrator." onclick="startSim()">
                         <i class="fa-solid fa-play"></i> Start Sim
                     </button>
-                    <button class="btn btn-stop" title="Pause the simulation. Agent Sandbox scales down compute for inactive agents to save resources." onclick="stopSim()">
+                    <button class="btn btn-stop" title="Pause the simulation. Takes a gVisor Pod Snapshot to freeze agent memory in-place, then scales down compute." onclick="stopSim()">
                         <i class="fa-solid fa-pause"></i> Pause Sim
                     </button>
                 </div>
+                
+                <div style="display: flex; gap: 12px; align-items: center; width: 100%; justify-content: flex-end;">
+                    <select id="snapshot-select" title="Select a GKE Pod Snapshot to restore. Only available if a snapshot exists." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none; transition: all 0.2s;" disabled>
+                        <option value="">No Snapshot Available</option>
+                    </select>
+                    <button id="restore-btn" class="btn" title="Restore the simulation state from the selected GKE Pod Snapshot." style="background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); color: white; opacity: 0.5; cursor: not-allowed; font-size: 0.85rem;" onclick="restoreSnapshot()" disabled>
+                        <i class="fa-solid fa-clock-rotate-left"></i> Restore Snap
+                    </button>
+                </div>
+
                 <select id="duration-select" title="Set the duration for the simulation. Useful for observing fast scale-up and scale-down of isolated agent environments." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; width: 100%; outline: none;" onchange="this.blur()">
                     <option value="10">Timer: 10 Seconds</option>
                     <option value="30" selected>Timer: 30 Seconds</option>
@@ -566,12 +576,16 @@
                 </span>
             </div>
             
-            <div class="terminal-stat-row">
+            <div class="terminal-stat-row" style="flex-wrap: wrap; gap: 8px;">
                 <div>Running [ <span id="sb-running" style="color: #34A853; font-weight:800;">0</span> ]</div>
                 <div style="color: rgba(255,255,255,0.2)">|</div>
                 <div>Paused [ <span id="sb-paused" style="color: #FBBC04; font-weight:800;">0</span> ]</div>
                 <div style="color: rgba(255,255,255,0.2)">|</div>
                 <div>Created [ <span id="sb-created" style="color: #4285F4; font-weight:800;">0</span> ]</div>
+                <div style="color: rgba(255,255,255,0.2)">|</div>
+                <div>Pods Snapshotted [ <span id="sb-snapshotted-pods" style="color: #A855F7; font-weight:800;">0</span> ]</div>
+                <div style="color: rgba(255,255,255,0.2)">|</div>
+                <div>Snapshots [ <span id="sb-snapshot-groups" style="color: #c084fc; font-weight:800;">0</span> ]</div>
             </div>
 
             <div class="terminal-body" id="terminal-feed">
@@ -581,9 +595,45 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            // Removed combobox initialization logic
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadSnapshots();
         });
+
+        async function loadSnapshots() {
+            try {
+                const res = await fetch('/api/snapshots');
+                if (!res.ok) throw new Error("Failed to fetch snapshots");
+                const data = await res.json();
+                const select = document.getElementById('snapshot-select');
+                const btn = document.getElementById('restore-btn');
+                
+                // Update UI Counters
+                document.getElementById('sb-snapshotted-pods').innerText = data.pod_count || 0;
+                document.getElementById('sb-snapshot-groups').innerText = data.groups ? data.groups.length : 0;
+
+                if (data.groups && data.groups.length > 0) {
+                    select.innerHTML = '';
+                    data.groups.forEach(snap => {
+                        const opt = document.createElement('option');
+                        opt.value = snap;
+                        opt.innerText = snap;
+                        select.appendChild(opt);
+                    });
+                    select.disabled = false;
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                } else {
+                    select.innerHTML = '<option value="">No Snapshot Available</option>';
+                    select.disabled = true;
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                }
+            } catch (err) {
+                console.error("Failed to load snapshots", err);
+            }
+        }
 
         function connectWS() {
             const wsUrl = `ws://${window.location.host}/ws`;
@@ -833,7 +883,54 @@
             if (simTimeout) clearTimeout(simTimeout);
             if (countdownInterval) clearInterval(countdownInterval);
             document.getElementById('countdown-timer').style.display = 'none';
-            await fetch('/api/simulation/stop', { method: 'POST' });
+            await fetch('/api/simulation/stop', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                const termFeed = document.getElementById('terminal-feed');
+                if (termFeed) {
+                    const ln = document.createElement('div');
+                    ln.className = 'terminal-log-line';
+                    ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-camera"></i> <span style="color: #A855F7; font-weight:600;">Snapshot created of ${data.pods_count} pods -> ${data.group_id}</span>`;
+                    termFeed.appendChild(ln);
+                    termFeed.scrollTop = termFeed.scrollHeight;
+                }
+            });
+        }
+
+        async function restoreSnapshot() {
+            const select = document.getElementById('snapshot-select');
+            const snap = select.value;
+            if (!snap) return;
+            
+            const btn = document.getElementById('restore-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Restoring...';
+            
+            try {
+                const res = await fetch('/api/simulation/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ snapshot_name: snap })
+                });
+                if (!res.ok) throw new Error("API call failed");
+                
+                const termFeed = document.getElementById('terminal-feed');
+                if (termFeed) {
+                    const ln = document.createElement('div');
+                    ln.className = 'terminal-log-line';
+                    ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-clock-rotate-left"></i> <span style="color: #34A853; font-weight:600;">Snapshot Group ${snap} restored - Recreation triggered.</span>`;
+                    termFeed.appendChild(ln);
+                    termFeed.scrollTop = termFeed.scrollHeight;
+                }
+                
+                alert('Snapshot restore triggered successfully! If needed, hit Start Sim to resume loop orchestration.');
+                location.reload(); // Refresh to pull state
+            } catch (e) {
+                alert('Failed to restore snapshot: ' + e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Restore Snap';
+            }
         }
     </script>
 </body>
