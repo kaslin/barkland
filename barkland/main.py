@@ -332,6 +332,29 @@ async def run_simulation(names: List[str]):
     await broadcast_state()
 
 async def broadcast_state():
+    # State Reconciliation: If a sandbox was deleted in K8s, remove it from sim.dogs
+    try:
+        claims_result = subprocess.run(
+            ["kubectl", "get", "sandboxclaims", "-n", "barkland", "-o", "jsonpath={.items[*].metadata.name}"],
+            capture_output=True, text=True, check=True
+        )
+        active_claims = set(claims_result.stdout.split())
+        
+        dogs_to_remove = []
+        for name, client in sandbox_clients.items():
+             if hasattr(client, "claim_name") and client.claim_name:
+                  if client.claim_name not in active_claims:
+                       dogs_to_remove.append(name)
+                       
+        for name in dogs_to_remove:
+             print(f"Reconciled: Dog {name} deleted because sandbox claim {sandbox_clients[name].claim_name} was removed.")
+             sim.dogs.pop(name, None)
+             sandbox_clients.pop(name, None)
+    except Exception as e:
+        # Silently log errors querying K8s to prevent UI locks
+        # print(f"State Reconciliation error: {e}")
+        pass
+
     # Simulate sandbox states for dashboard layout metrics
     sandboxes = []
     for i, dog in enumerate(sim.dogs.values()):
