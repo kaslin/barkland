@@ -158,9 +158,38 @@ class RestoreSnapshotRequest(BaseModel):
 @app.post("/api/simulation/restore")
 async def restore_simulation(req: RestoreSnapshotRequest):
     print(f"Restoring simulation from Snapshot Group: {req.snapshot_name}")
-    # We would query all manual triggers for this group to find the pod names and restore each dog!
-    # For a demo we can just return success and log it. In a real cluster it would spin up new dogs for each pod in the group.
-    return {"status": f"Restored all pods in snapshot group {req.snapshot_name}"}
+    
+    try:
+        # Use query to find how many dogs were in that group
+        result = subprocess.run(
+            ["kubectl", "get", "psmt", "-n", "barkland", "-l", f"barkland-group={req.snapshot_name}", "-o", "json"],
+            capture_output=True, text=True, check=True
+        )
+        triggers_data = json.loads(result.stdout)
+        count = len(triggers_data.get("items", []))
+        
+        if count == 0:
+            return {"status": f"No pods found in snapshot group {req.snapshot_name}"}
+
+        # Clear existing in-memory dogs
+        sim.dogs.clear()
+        for d in list(sandbox_clients.keys()):
+            client = sandbox_clients.pop(d, None)
+            if client:
+                try: client.__exit__(None, None, None)
+                except: pass
+
+        from barkland.utils.dog_registry import generate_unique_dog_names
+        names = generate_unique_dog_names(count)
+        
+        # Start the simulation loop over with the reconstructed count!
+        asyncio.create_task(run_simulation(names))
+        
+        return {"status": f"Recreated {count} dogs from snapshot group {req.snapshot_name}"}
+        
+    except Exception as e:
+        print(f"Failed to restore snapshot: {e}")
+        return {"status": f"Failed to restore simulation: {e}"}
 
 @app.post("/api/simulation/snapshot")
 async def take_snapshot():
@@ -240,15 +269,8 @@ spec:
 @app.post("/api/simulation/stop")
 def stop_simulation():
     sim.is_running = False
-    
-    import subprocess
-    print("Issuing aggressive namespace sandbox and claim cleanup on stop...")
-    try:
-        subprocess.run(["kubectl", "delete", "sandboxclaims,sandboxes", "--all", "-n", "barkland", "--wait=false"], check=False)
-    except Exception as e:
-        print(f"Kubectl cleanup skipped or failed: {e}")
-        
-    return {"status": "Simulation stopped and sandboxes cleaned up"}
+    print("Pausing simulation loop orchestration...")
+    return {"status": "Simulation loop paused"}
 
 async def run_simulation(names: List[str]):
     sim.is_running = True
