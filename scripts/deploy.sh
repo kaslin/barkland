@@ -64,7 +64,7 @@ echo "=== [7/7] Applying Kubernetes Manifests ==="
 export PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS SNAPSHOT_BUCKET_NAME
 
 for file in k8s/*.yaml; do
-    envsubst '$PROJECT_ID $LOCATION $CLUSTER_NAME $NAMESPACE $REPO $WARMPOOL_REPLICAS $SNAPSHOT_BUCKET_NAME' < "$file" | kubectl apply -f -
+    envsubst '$PROJECT_ID $REGISTRY_LOCATION $CLUSTER_NAME $NAMESPACE $REPO $WARMPOOL_REPLICAS $SNAPSHOT_BUCKET_NAME' < "$file" | kubectl apply -f -
 done
 
 kubectl rollout restart deployment/barkland-orchestrator -n ${NAMESPACE}
