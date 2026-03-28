@@ -177,9 +177,25 @@ async def take_snapshot():
         )
         sandbox_data = json.loads(result.stdout)
         
+        # 1. Query all pods in barkland once to create a lookup map of hash labels
+        pod_run = subprocess.run(
+            ["kubectl", "get", "pods", "-n", "barkland", "-o", "json"],
+            capture_output=True, text=True, check=True
+        )
+        all_pods = json.loads(pod_run.stdout).get("items", [])
+        hash_to_pod = {}
+        for pod in all_pods:
+            labels = pod.get("metadata", {}).get("labels", {})
+            for k, v in labels.items():
+                if k == "agents.x-k8s.io/sandbox-name-hash":
+                    hash_to_pod[f"{k}={v}"] = pod["metadata"]["name"]
+
         for item in sandbox_data.get("items", []):
-            annotations = item.get("metadata", {}).get("annotations", {})
-            pod_name = annotations.get("agents.x-k8s.io/pod-name")
+            selector = item.get("status", {}).get("selector")
+            if not selector:
+                continue
+                
+            pod_name = hash_to_pod.get(selector)
             if not pod_name:
                 continue
                 
