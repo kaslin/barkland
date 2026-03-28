@@ -60,6 +60,9 @@ if ! gcloud storage buckets describe gs://${SNAPSHOT_BUCKET_NAME} --project=${PR
     gcloud storage buckets create gs://${SNAPSHOT_BUCKET_NAME} --project=${PROJECT_ID} --location=${GCS_LOCATION}
 fi
 
+echo "Clearing old snapshots from gs://${SNAPSHOT_BUCKET_NAME}..."
+gcloud storage rm gs://${SNAPSHOT_BUCKET_NAME}/** --recursive 2>/dev/null || true
+
 echo "=== [7/7] Applying Kubernetes Manifests ==="
 export PROJECT_ID REGISTRY_LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS SNAPSHOT_BUCKET_NAME
 

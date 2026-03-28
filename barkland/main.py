@@ -198,8 +198,17 @@ spec:
             subprocess.run(["kubectl", "apply", "-f", "-"], input=trigger_yaml.encode('utf-8'), check=True)
             print(f"Triggered GKE Pod Snapshot for {pod_name}")
             
+        # Give a brief moment for snapshot triggers to register in control plane before we delete the pods.
+        await asyncio.sleep(2)
+        
+        try:
+            subprocess.run(["kubectl", "delete", "sandboxclaims", "--all", "-n", "barkland"], check=True)
+            print("Deleted sandbox claims after snapshotting running pods.")
+        except Exception as e:
+            print(f"Failed to delete sandbox claims during snapshot sequence: {e}")
+            
         return {
-            "status": "Snapshots triggered successfully.",
+            "status": "Snapshots triggered and running pods were deleted.",
             "group_id": str(timestamp),
             "pods_count": pods_count
         }

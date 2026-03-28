@@ -521,7 +521,7 @@
 
                 <!-- Snapshotting Section -->
                 <div style="display: flex; gap: 12px; align-items: center; width: 100%; justify-content: flex-end; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
-                    <button class="btn" title="Take a GKE Pod Snapshot of currently running dog pods without stopping them." style="background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: white; font-size: 0.85rem;" onclick="takeSnapshot()">
+                    <button class="btn" title="Take a GKE Pod Snapshot of currently running dog pods and delete them to flush compute." style="background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: white; font-size: 0.85rem;" onclick="takeSnapshot()">
                         <i class="fa-solid fa-camera"></i> Take Snapshot
                     </button>
                     <select id="snapshot-select" title="Select a GKE Pod Snapshot to restore. Only available if a snapshot exists." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none; transition: all 0.2s;" disabled>
@@ -532,13 +532,6 @@
                     </button>
                 </div>
 
-                <select id="duration-select" title="Set the duration for the simulation. Useful for observing fast scale-up and scale-down of isolated agent environments." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; width: 100%; outline: none;" onchange="this.blur()">
-                    <option value="10">Timer: 10 Seconds</option>
-                    <option value="30" selected>Timer: 30 Seconds</option>
-                    <option value="60">Timer: 60 Seconds</option>
-                    <option value="180">Timer: 180 Seconds</option>
-                    <option value="0">Timer: Continuous</option>
-                </select>
                 <!-- Countdown View -->
                 <div id="countdown-timer" style="font-size: 0.85rem; color: #EA4335; font-weight: 600; font-family: monospace; display: none; background: rgba(234, 67, 53, 0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(234, 67, 53, 0.2); width: 100%; text-align: center;">
                     <i class="fa-solid fa-stopwatch" style="font-size:0.75rem;"></i> Running: <span id="timer-sec">0</span>s left
