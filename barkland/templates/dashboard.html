@@ -504,12 +504,26 @@
                     <button class="btn btn-start" title="Start the simulation loop. This provisions Sandbox custom resources via the Orchestrator." onclick="startSim()">
                         <i class="fa-solid fa-play"></i> Start Sim
                     </button>
-                    <button class="btn btn-stop" title="Pause the simulation. Takes a gVisor Pod Snapshot to freeze agent memory in-place, then scales down compute." onclick="stopSim()">
+                    <button class="btn btn-stop" title="Pause the simulation loop. Stops compute tracking but preserves runtime state until reset." onclick="stopSim()">
                         <i class="fa-solid fa-pause"></i> Pause Sim
                     </button>
                 </div>
                 
                 <div style="display: flex; gap: 12px; align-items: center; width: 100%; justify-content: flex-end;">
+                    <select id="duration-select" title="Set the duration for the simulation. Useful for observing fast scale-up and scale-down of isolated agent environments." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; width: 100%; outline: none;" onchange="this.blur()">
+                        <option value="10">Timer: 10 Seconds</option>
+                        <option value="30" selected>Timer: 30 Seconds</option>
+                        <option value="60">Timer: 60 Seconds</option>
+                        <option value="180">Timer: 180 Seconds</option>
+                        <option value="0">Timer: Continuous</option>
+                    </select>
+                </div>
+
+                <!-- Snapshotting Section -->
+                <div style="display: flex; gap: 12px; align-items: center; width: 100%; justify-content: flex-end; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 15px;">
+                    <button class="btn" title="Take a GKE Pod Snapshot of currently running dog pods without stopping them." style="background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: white; font-size: 0.85rem;" onclick="takeSnapshot()">
+                        <i class="fa-solid fa-camera"></i> Take Snapshot
+                    </button>
                     <select id="snapshot-select" title="Select a GKE Pod Snapshot to restore. Only available if a snapshot exists." style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.08); font-size: 0.8rem; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-family: 'Inter', sans-serif; outline: none; transition: all 0.2s;" disabled>
                         <option value="">No Snapshot Available</option>
                     </select>
@@ -895,6 +909,25 @@
                     termFeed.scrollTop = termFeed.scrollHeight;
                     loadSnapshots();
                 }
+            });
+        }
+
+        async function takeSnapshot() {
+            const termFeed = document.getElementById('terminal-feed');
+            const ln = document.createElement('div');
+            ln.className = 'terminal-log-line';
+            ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-spinner fa-spin"></i> Triggering GKE Pod Snapshots...`;
+            termFeed.appendChild(ln);
+            termFeed.scrollTop = termFeed.scrollHeight;
+
+            await fetch('/api/simulation/snapshot', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-camera"></i> <span style="color: #ec4899; font-weight:600;">Snapshot triggers created for ${data.pods_count} pods -> ${data.group_id}</span>`;
+                loadSnapshots();
+            })
+            .catch(e => {
+                ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-triangle-exclamation" style="color:#EA4335"></i> Snapshot failed: ${e}`;
             });
         }
 

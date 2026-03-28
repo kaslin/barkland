@@ -162,10 +162,8 @@ async def restore_simulation(req: RestoreSnapshotRequest):
     # For a demo we can just return success and log it. In a real cluster it would spin up new dogs for each pod in the group.
     return {"status": f"Restored all pods in snapshot group {req.snapshot_name}"}
 
-@app.post("/api/simulation/stop")
-def stop_simulation():
-    sim.is_running = False
-    
+@app.post("/api/simulation/snapshot")
+async def take_snapshot():
     import time
     timestamp = int(time.time())
     import json
@@ -200,6 +198,11 @@ spec:
             subprocess.run(["kubectl", "apply", "-f", "-"], input=trigger_yaml.encode('utf-8'), check=True)
             print(f"Triggered GKE Pod Snapshot for {pod_name}")
             
+        return {
+            "status": "Snapshots triggered successfully.",
+            "group_id": str(timestamp),
+            "pods_count": pods_count
+        }
     except Exception as e:
         print(f"Failed to query pods or trigger snapshots: {e}")
         return {
@@ -208,32 +211,29 @@ spec:
             "pods_count": 0
         }
 
-    # Pausing simulation... (Rest of the loop where we delete claims if needed, or if we just want to stop, let's track the pods count in the next block!)
-    # Let's verify if we need to clean up sandbox_clients dict or not! Since it was empty anyway, we just pass!
+@app.post("/api/simulation/stop")
+async def stop_simulation():
+    sim.is_running = False
     
-    # We also need to pause/delete the sandbox claims so the pods are deleted (the snapshotting process saves their state, but they can continue running unless stopped/deleted!).
-    # If using manual triggers, we should delete claims to clear the simulation run!
     print(f"Deleting sandbox claims to clear simulation run for reset...")
     try:
         subprocess.run(["kubectl", "delete", "sandboxclaims", "--all", "-n", "barkland"], check=True)
     except Exception as e:
         print(f"Failed to delete sandbox claims: {e}")
                 
-        # Now delete (or let clear) - the user wants them deleted after snapshots
-        # We can issue an aggressive namespace cleanup after triggers are applied
-    import time
-    time.sleep(2) # Give a brief moment for snapshot triggers to register in control plane before we delete the pods.
-    
     try:
         subprocess.run(["kubectl", "delete", "sandboxclaims,sandboxes", "--all", "-n", "barkland", "--wait=false"], check=False)
-        print("Issued aggressive namespace cleanup after snapshots.")
+        print("Issued aggressive namespace cleanup.")
     except Exception as e:
         print(f"Kubectl cleanup skipped or failed: {e}")
                   
+    # Give K8s API a brief moment to set deletion timestamps before broadcasting state
+    await asyncio.sleep(1)
+    await broadcast_state()
+              
     return {
-        "status": "Running pods have been snapshotted and then deleted, freeing up resources.",
-        "group_id": str(timestamp),
-        "pods_count": pods_count
+        "status": "Running pods have been deleted, freeing up resources.",
+        "pods_count": 0
     }
 
 async def run_simulation(names: List[str]):
@@ -335,10 +335,15 @@ async def broadcast_state():
     # State Reconciliation: If a sandbox was deleted in K8s, remove it from sim.dogs
     try:
         claims_result = subprocess.run(
-            ["kubectl", "get", "sandboxclaims", "-n", "barkland", "-o", "jsonpath={.items[*].metadata.name}"],
+            ["kubectl", "get", "sandboxclaims", "-n", "barkland", "-o", "json"],
             capture_output=True, text=True, check=True
         )
-        active_claims = set(claims_result.stdout.split())
+        import json
+        claims_data = json.loads(claims_result.stdout)
+        active_claims = set()
+        for item in claims_data.get("items", []):
+             if not item.get("metadata", {}).get("deletionTimestamp"):
+                  active_claims.add(item.get("metadata", {}).get("name"))
         
         dogs_to_remove = []
         for name, client in sandbox_clients.items():
