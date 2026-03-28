@@ -212,29 +212,17 @@ spec:
         }
 
 @app.post("/api/simulation/stop")
-async def stop_simulation():
+def stop_simulation():
     sim.is_running = False
     
-    print(f"Deleting sandbox claims to clear simulation run for reset...")
-    try:
-        subprocess.run(["kubectl", "delete", "sandboxclaims", "--all", "-n", "barkland"], check=True)
-    except Exception as e:
-        print(f"Failed to delete sandbox claims: {e}")
-                
+    import subprocess
+    print("Issuing aggressive namespace sandbox and claim cleanup on stop...")
     try:
         subprocess.run(["kubectl", "delete", "sandboxclaims,sandboxes", "--all", "-n", "barkland", "--wait=false"], check=False)
-        print("Issued aggressive namespace cleanup.")
     except Exception as e:
         print(f"Kubectl cleanup skipped or failed: {e}")
-                  
-    # Give K8s API a brief moment to set deletion timestamps before broadcasting state
-    await asyncio.sleep(1)
-    await broadcast_state()
-              
-    return {
-        "status": "Running pods have been deleted, freeing up resources.",
-        "pods_count": 0
-    }
+        
+    return {"status": "Simulation stopped and sandboxes cleaned up"}
 
 async def run_simulation(names: List[str]):
     sim.is_running = True

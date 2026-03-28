@@ -897,19 +897,7 @@
             if (simTimeout) clearTimeout(simTimeout);
             if (countdownInterval) clearInterval(countdownInterval);
             document.getElementById('countdown-timer').style.display = 'none';
-            await fetch('/api/simulation/stop', { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                const termFeed = document.getElementById('terminal-feed');
-                if (termFeed) {
-                    const ln = document.createElement('div');
-                    ln.className = 'terminal-log-line';
-                    ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-camera"></i> <span style="color: #A855F7; font-weight:600;">Snapshot created of ${data.pods_count} pods -> ${data.group_id}</span>`;
-                    termFeed.appendChild(ln);
-                    termFeed.scrollTop = termFeed.scrollHeight;
-                    loadSnapshots();
-                }
-            });
+            await fetch('/api/simulation/stop', { method: 'POST' });
         }
 
         async function takeSnapshot() {
