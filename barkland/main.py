@@ -201,7 +201,11 @@ spec:
             
     except Exception as e:
         print(f"Failed to query pods or trigger snapshots: {e}")
-        return {"status": f"Failed during snapshotting: {e}"}
+        return {
+            "status": f"Failed during snapshotting: {e}",
+            "group_id": str(timestamp),
+            "pods_count": 0
+        }
 
     # Pausing simulation... (Rest of the loop where we delete claims if needed, or if we just want to stop, let's track the pods count in the next block!)
     # Let's verify if we need to clean up sandbox_clients dict or not! Since it was empty anyway, we just pass!
