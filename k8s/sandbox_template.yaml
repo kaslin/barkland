@@ -5,6 +5,9 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   podTemplate:
+    metadata:
+      labels:
+        app: barking-dog
     spec:
       runtimeClassName: gvisor # Enables GKE Sandbox (gvisor) on Autopilot
       containers:
