@@ -165,6 +165,11 @@ gcloud projects add-iam-policy-binding projects/$PROJECT_ID \
     --role="roles/aiplatform.user" \
     --member="principal://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$PROJECT_ID.svc.id.goog/subject/ns/$NAMESPACE/sa/barkland-orchestrator-sa" \
     --condition=None
+
+gcloud projects add-iam-policy-binding projects/$PROJECT_ID \
+    --role="roles/storage.admin" \
+    --member="principal://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$PROJECT_ID.svc.id.goog/subject/ns/$NAMESPACE/sa/barkland-orchestrator-sa" \
+    --condition=None
 ```
 
 > [!NOTE]

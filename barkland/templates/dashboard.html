@@ -893,6 +893,7 @@
                     ln.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <i class="fa-solid fa-camera"></i> <span style="color: #A855F7; font-weight:600;">Snapshot created of ${data.pods_count} pods -> ${data.group_id}</span>`;
                     termFeed.appendChild(ln);
                     termFeed.scrollTop = termFeed.scrollHeight;
+                    loadSnapshots();
                 }
             });
         }
