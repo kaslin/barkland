@@ -10,7 +10,7 @@ else
     exit 1
 fi
 
-for var in PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS; do
+for var in PROJECT_ID CLUSTER_LOCATION REGISTRY_LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS SNAPSHOT_BUCKET_NAME; do
     if [ -z "${!var}" ]; then
         echo "Error: Required configuration field $var is not set in .configuration"
         exit 1
@@ -18,7 +18,7 @@ for var in PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS; do
 done
 
 echo "=== [1/6] Acquiring GKE cluster credentials ==="
-gcloud container clusters get-credentials ${CLUSTER_NAME} --region ${LOCATION} --project ${PROJECT_ID}
+gcloud container clusters get-credentials ${CLUSTER_NAME} --location ${CLUSTER_LOCATION} --project ${PROJECT_ID}
 
 echo "=== [2/6] Creating Namespace: ${NAMESPACE} ==="
 kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
@@ -49,13 +49,22 @@ if [ ! -f "Dockerfile" ]; then
     exit 1
 fi
 
-./scripts/push-images --image-prefix=${LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/ --extra-image-tag latest
+./scripts/push-images --image-prefix=${REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/ --extra-image-tag latest
 
-echo "=== [4/5] Applying Kubernetes Manifests ==="
-export PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS
+echo "=== [6/6] Ensuring Snapshot GCS Bucket Exists ==="
+# Use REGISTRY_LOCATION for GCS bucket (usually regional, like us-central1)
+GCS_LOCATION=${REGISTRY_LOCATION}
+
+if ! gcloud storage buckets describe gs://${SNAPSHOT_BUCKET_NAME} --project=${PROJECT_ID} > /dev/null 2>&1; then
+    echo "Bucket gs://${SNAPSHOT_BUCKET_NAME} does not exist, creating it in $GCS_LOCATION..."
+    gcloud storage buckets create gs://${SNAPSHOT_BUCKET_NAME} --project=${PROJECT_ID} --location=${GCS_LOCATION}
+fi
+
+echo "=== [7/7] Applying Kubernetes Manifests ==="
+export PROJECT_ID LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS SNAPSHOT_BUCKET_NAME
 
 for file in k8s/*.yaml; do
-    envsubst '$PROJECT_ID $LOCATION $CLUSTER_NAME $NAMESPACE $REPO $WARMPOOL_REPLICAS' < "$file" | kubectl apply -f -
+    envsubst '$PROJECT_ID $LOCATION $CLUSTER_NAME $NAMESPACE $REPO $WARMPOOL_REPLICAS $SNAPSHOT_BUCKET_NAME' < "$file" | kubectl apply -f -
 done
 
 kubectl rollout restart deployment/barkland-orchestrator -n ${NAMESPACE}

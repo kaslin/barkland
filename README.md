@@ -101,10 +101,11 @@ export CLUSTER_LOCATION="us-central1" # Regional is recommended for Autopilot
 # Enable Kubernetes Engine API
 gcloud services enable container.googleapis.com --project=$PROJECT_ID
 
-# Create the Autopilot cluster
+# Create the Autopilot cluster (Ensure version is 1.34.1-gke.3084001+ for Pod Snapshots)
 gcloud container clusters create-auto $CLUSTER_NAME \
     --location=$CLUSTER_LOCATION \
-    --project=$PROJECT_ID
+    --project=$PROJECT_ID \
+    --cluster-version=1.35.1-gke.1396002
 ```
 
 **For a GKE Standard Cluster:**
@@ -117,10 +118,12 @@ export CLUSTER_LOCATION="us-central1-a" # Zonal
 # Enable Kubernetes Engine API
 gcloud services enable container.googleapis.com --project=$PROJECT_ID
 
-# Create the Standard cluster
-gcloud container clusters create $CLUSTER_NAME \
+# Create the Standard cluster (Ensure version is 1.34.1-gke.3084001+ for Pod Snapshots)
+gcloud beta container clusters create $CLUSTER_NAME \
     --location=$CLUSTER_LOCATION \
     --project=$PROJECT_ID \
+    --cluster-version=1.35.1-gke.1396002 \
+    --enable-pod-snapshots \
     --workload-pool=${PROJECT_ID}.svc.id.goog \
     --sandbox type=gvisor \
     --machine-type=e2-standard-4 \
@@ -146,6 +149,7 @@ CLUSTER_NAME="your-cluster-name"
 NAMESPACE="barkland"
 REPO="barkland"
 WARMPOOL_REPLICAS="10"
+SNAPSHOT_BUCKET_NAME="your-snapshot-bucket-name"
 EOF
 ```
 

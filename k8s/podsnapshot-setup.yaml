@@ -1,0 +1,17 @@
+apiVersion: podsnapshot.gke.io/v1alpha1
+kind: PodSnapshotStorageConfig
+metadata:
+  name: barkland-storage-config
+  namespace: barkland
+spec:
+  gcsBucket: "$SNAPSHOT_BUCKET_NAME"
+---
+apiVersion: podsnapshot.gke.io/v1alpha1
+kind: PodSnapshotPolicy
+metadata:
+  name: barkland-snapshot-policy
+  namespace: barkland
+spec:
+  podSelector:
+    matchLabels:
+      app: barking-dog # Selects the sandbox pods

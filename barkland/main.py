@@ -187,10 +187,16 @@ spec:
   targetPod: {pod_name}
 """
             try:
-                subprocess.run(["kubectl", "apply", "-f", "-"], input=trigger_yaml.encode('utf-8'), check=False)
+                subprocess.run(["kubectl", "apply", "-f", "-"], input=trigger_yaml.encode('utf-8'), check=True)
                 print(f"Triggered GKE Pod Snapshot for {dog_name} ({pod_name})")
             except Exception as e:
-                print(f"Failed to trigger snapshot for {dog_name}: {e}")
+                print(f"Failed to trigger GKE Pod Snapshot for {dog_name}: {e}")
+                # We return it in the response so the UI can know we failed
+                return {
+                    "status": f"Failed to take snapshots. CRD might be missing or unsupported in the cluster: {e}",
+                    "group_id": str(timestamp),
+                    "pods_count": 0
+                }
                 
         # Now delete (or let clear) - the user wants them deleted after snapshots
         # We can issue an aggressive namespace cleanup after triggers are applied
