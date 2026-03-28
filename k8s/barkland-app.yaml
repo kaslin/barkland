@@ -22,7 +22,7 @@ rules:
     verbs: ["create", "get", "list", "watch", "patch", "update", "delete"]
 
   - apiGroups: [""]
-    resources: ["services"]
+    resources: ["services", "pods"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
