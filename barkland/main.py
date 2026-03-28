@@ -170,15 +170,16 @@ async def take_snapshot():
     pods_count = 0
     
     try:
-        # Query running pods that match our sandbox label
+        # Query active SandboxClaims to discover ONLY running dogs (ignore warmpools!)
         result = subprocess.run(
-            ["kubectl", "get", "pods", "-n", "barkland", "-l", "app=barking-dog", "-o", "json"],
+            ["kubectl", "get", "sandboxclaims", "-n", "barkland", "-o", "json"],
             capture_output=True, text=True, check=True
         )
-        pods_data = json.loads(result.stdout)
+        claims_data = json.loads(result.stdout)
         
-        for item in pods_data.get("items", []):
-            pod_name = item.get("metadata", {}).get("name")
+        for item in claims_data.get("items", []):
+            annotations = item.get("metadata", {}).get("annotations", {})
+            pod_name = annotations.get("agents.x-k8s.io/pod-name")
             if not pod_name:
                 continue
                 
