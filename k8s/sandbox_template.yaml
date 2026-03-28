@@ -14,12 +14,12 @@ spec:
         - name: agent
           image: ${REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/barkland:latest
           env:
-            - name: GEMINI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: gemini-api-key
-                  key: GEMINI_API_KEY
-            # NOTE: If the above is commented out, it uses Workload Identity (Vertex AI).
+            # NOTE: Commented out to use Workload Identity (Vertex AI) by default.
+            # - name: GEMINI_API_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: gemini-api-key
+            #       key: GEMINI_API_KEY
           resources:
             requests:
               cpu: "2"

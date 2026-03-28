@@ -168,17 +168,9 @@ gcloud projects add-iam-policy-binding projects/$PROJECT_ID \
 ```
 
 > [!NOTE]
-> Ensure you remove or comment out the `GEMINI_API_KEY` environment variables in `k8s/barkland-app.yaml` and `k8s/sandbox_template.yaml` to force the application to use the default Google credentials chain (Workload Identity).
->
-> You can run the following `sed` commands to automatically comment out these blocks:
->
-> ```bash
-> # Comment out GEMINI_API_KEY in barkland-app.yaml
-> sed -i '/- name: GEMINI_API_KEY/,/key: GEMINI_API_KEY/ s/^/#/' k8s/barkland-app.yaml
+> By default, the `GEMINI_API_KEY` environment variables in `k8s/barkland-app.yaml` and `k8s/sandbox_template.yaml` are commented out to force the application to use the default Google credentials chain (Workload Identity).
 > 
-> # Comment out GEMINI_API_KEY in sandbox_template.yaml
-> sed -i '/- name: GEMINI_API_KEY/,/key: GEMINI_API_KEY/ s/^/#/' k8s/sandbox_template.yaml
-> ```
+> If you prefer to use a standard API Key instead of Workload Identity, you can uncomment these blocks in both files and ensure your GKE secret `gemini-api-key` is created.
 
 ---
 
