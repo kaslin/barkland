@@ -167,13 +167,23 @@ def stop_simulation():
     
     import time
     timestamp = int(time.time())
+    import json
     pods_count = 0
-    print(f"Issuing Pod Snapshots for Group: {timestamp} and pausing sandboxes instead of deleting...")
-    for dog_name, client in sandbox_clients.items():
-        if client and getattr(client, "pod_name", None):
-            pod_name = client.pod_name
+    
+    try:
+        # Query running pods that match our sandbox label
+        result = subprocess.run(
+            ["kubectl", "get", "pods", "-n", "barkland", "-l", "app=barking-dog", "-o", "json"],
+            capture_output=True, text=True, check=True
+        )
+        pods_data = json.loads(result.stdout)
+        
+        for item in pods_data.get("items", []):
+            pod_name = item.get("metadata", {}).get("name")
+            if not pod_name:
+                continue
+                
             pods_count += 1
-            # Create a manual Pod Snapshot trigger for each pod
             trigger_name = f"barkland-group-{timestamp}-{pod_name}"
             trigger_yaml = f"""
 apiVersion: podsnapshot.gke.io/v1alpha1
@@ -186,17 +196,23 @@ metadata:
 spec:
   targetPod: {pod_name}
 """
-            try:
-                subprocess.run(["kubectl", "apply", "-f", "-"], input=trigger_yaml.encode('utf-8'), check=True)
-                print(f"Triggered GKE Pod Snapshot for {dog_name} ({pod_name})")
-            except Exception as e:
-                print(f"Failed to trigger GKE Pod Snapshot for {dog_name}: {e}")
-                # We return it in the response so the UI can know we failed
-                return {
-                    "status": f"Failed to take snapshots. CRD might be missing or unsupported in the cluster: {e}",
-                    "group_id": str(timestamp),
-                    "pods_count": 0
-                }
+            subprocess.run(["kubectl", "apply", "-f", "-"], input=trigger_yaml.encode('utf-8'), check=True)
+            print(f"Triggered GKE Pod Snapshot for {pod_name}")
+            
+    except Exception as e:
+        print(f"Failed to query pods or trigger snapshots: {e}")
+        return {"status": f"Failed during snapshotting: {e}"}
+
+    # Pausing simulation... (Rest of the loop where we delete claims if needed, or if we just want to stop, let's track the pods count in the next block!)
+    # Let's verify if we need to clean up sandbox_clients dict or not! Since it was empty anyway, we just pass!
+    
+    # We also need to pause/delete the sandbox claims so the pods are deleted (the snapshotting process saves their state, but they can continue running unless stopped/deleted!).
+    # If using manual triggers, we should delete claims to clear the simulation run!
+    print(f"Deleting sandbox claims to clear simulation run for reset...")
+    try:
+        subprocess.run(["kubectl", "delete", "sandboxclaims", "--all", "-n", "barkland"], check=True)
+    except Exception as e:
+        print(f"Failed to delete sandbox claims: {e}")
                 
         # Now delete (or let clear) - the user wants them deleted after snapshots
         # We can issue an aggressive namespace cleanup after triggers are applied
