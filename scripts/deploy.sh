@@ -63,6 +63,9 @@ fi
 echo "Clearing old snapshots from gs://${SNAPSHOT_BUCKET_NAME}..."
 gcloud storage rm gs://${SNAPSHOT_BUCKET_NAME}/** --recursive 2>/dev/null || true
 
+echo "Deleting old PodSnapshotManualTrigger records in cluster to reset metrics..."
+kubectl delete psmt --all -n ${NAMESPACE} --wait=false 2>/dev/null || true
+
 echo "=== [7/7] Applying Kubernetes Manifests ==="
 export PROJECT_ID REGISTRY_LOCATION CLUSTER_NAME NAMESPACE REPO WARMPOOL_REPLICAS SNAPSHOT_BUCKET_NAME
 
