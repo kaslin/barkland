@@ -12,6 +12,7 @@ from barkland.config import SimulationConfig
 from barkland.engine.simulation import SimulationLoop
 from barkland.models.dog import DogProfile, Personality, DogState
 import threading
+import subprocess
 try:
     from k8s_agent_sandbox import SandboxClient
 except ImportError:
