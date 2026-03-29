@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(override=True)
+    load_dotenv('.configuration', override=True)
 except ImportError:
     pass
 

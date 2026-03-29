@@ -1,5 +1,5 @@
 # ==========================================
-# Barkland - Environment Variables Template
+# Barkland - Template Environment Configuration
 # ==========================================
 
 # 1. API Keys & Authentication
@@ -18,7 +18,17 @@ GOOGLE_GENAI_MODEL_NAME=gemini-2.5-flash
 ENVIRONMENT=local
 
 
-# 2. Simulation Engine Configuration
+# 2. GKE Deployment Configuration (Used by deploy.sh)
+# ------------------------------------------
+PROJECT_ID="your_project_id"
+LOCATION="your_location"
+CLUSTER_NAME="your-cluster-name"
+NAMESPACE="barkland"
+REPO="barkland"
+WARMPOOL_REPLICAS="10"
+
+
+# 3. Simulation Engine Configuration
 # ------------------------------------------
 # Override default simulation variables
 NUM_DOGS="5"
@@ -30,7 +40,7 @@ SEED="42"
 # LOG_FILE="simulation.log"
 
 
-# 3. Kubernetes / Sandbox Integration
+# 4. Kubernetes / Sandbox Integration
 # ------------------------------------------
 # Overrides the router URL when running with the K8s Orchestrator
 SANDBOX_ROUTER_URL="http://sandbox-router-svc:8080"
