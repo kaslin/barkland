@@ -305,6 +305,8 @@ async def broadcast_state():
                 "ip": client.base_url or "Dynamic IP Ready"
             })
 
+    valid_dog_names = {sb["dog_name"] for sb in sandboxes}
+    
     state_update = {
         "tick": sim.tick_count,
         "dogs": [
@@ -317,7 +319,7 @@ async def broadcast_state():
                  "ticks_in_state": dog.ticks_in_state,
                  "latest_bark": dog.latest_bark,
                  "personality": dog.personality.value
-             } for dog in sim.dogs.values()
+             } for dog in sim.dogs.values() if dog.name in valid_dog_names
         ],
         "sandboxes": sandboxes
     }
