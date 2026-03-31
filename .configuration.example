@@ -1,0 +1,46 @@
+# ==========================================
+# Barkland - Template Environment Configuration
+# ==========================================
+
+# 1. API Keys & Authentication
+# ------------------------------------------
+# Your Google Gemini Developer API Key (If not using Vertex AI)
+GEMINI_API_KEY="your_api_key_here"
+
+# Vertex AI ADC overriding configuration
+GOOGLE_GENAI_USE_VERTEXAI=TRUE
+GOOGLE_CLOUD_PROJECT=your_project_id
+GOOGLE_CLOUD_LOCATION=your_location
+GOOGLE_GENAI_MODEL_NAME=gemini-2.5-flash
+
+# Set to "local" running outside of GKE Sandbox to bypass kubernetes network steps.
+# In production (GKE), leave this empty or set to "production".
+ENVIRONMENT=local
+
+
+# 2. GKE Deployment Configuration (Used by deploy.sh)
+# ------------------------------------------
+PROJECT_ID="your_project_id"
+LOCATION="your_location"
+CLUSTER_NAME="your-cluster-name"
+NAMESPACE="barkland"
+REPO="barkland"
+WARMPOOL_REPLICAS="10"
+
+
+# 3. Simulation Engine Configuration
+# ------------------------------------------
+# Override default simulation variables
+NUM_DOGS="5"
+NUM_TICKS="10"
+SPEED_MS="30"
+SEED="42"
+
+# Filepath for writing the simulation JSON event log
+# LOG_FILE="simulation.log"
+
+
+# 4. Kubernetes / Sandbox Integration
+# ------------------------------------------
+# Overrides the router URL when running with the K8s Orchestrator
+SANDBOX_ROUTER_URL="http://sandbox-router-svc:8080"

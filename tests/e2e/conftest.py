@@ -12,7 +12,8 @@ def get_free_port():
 @pytest.fixture(scope="function")
 def live_server_url():
     port = get_free_port()
-    python_exe = os.path.abspath(".venv/bin/python")
+    import sys
+    python_exe = sys.executable
     
     env = os.environ.copy()
     env["SPEED_MS"] = "1" # Fast mode ticks

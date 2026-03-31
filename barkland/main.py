@@ -6,6 +6,18 @@ import os
 import random
 from pydantic import BaseModel, Field
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv('.configuration', override=True)
+except ImportError:
+    pass
+
+is_local = os.getenv("ENVIRONMENT", "").lower() == "local"
+
+import warnings
+warnings.filterwarnings("ignore", message=".*Your application has authenticated using end user credentials.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="websockets.legacy.server")
+
 # Seed early so module-level static declarations roll deterministically
 random.seed(int(os.getenv("SEED", "42")))
 from barkland.config import SimulationConfig
@@ -13,7 +25,10 @@ from barkland.engine.simulation import SimulationLoop
 from barkland.models.dog import DogProfile, Personality, DogState
 import threading
 try:
-    from k8s_agent_sandbox import SandboxClient
+    if is_local:
+        SandboxClient = None # Force fallback out of K8s Sandbox connections
+    else:
+        from k8s_agent_sandbox import SandboxClient
 except ImportError:
     SandboxClient = None # Fallback for local testing without SDK
 
@@ -54,8 +69,7 @@ def generate_unique_dog_names(count: int) -> List[str]:
     # Fallback padding if unique names didn't cover the quota
     while len(names_set) < count:
         names_set.add(f"Pup-{len(names_set) + 1}")
-        
-    return list(names_set)
+    return sorted(list(names_set))
 
 # Pre-populate defaults
 num_dogs = 4
@@ -125,12 +139,13 @@ async def start_simulation(req: StartSimulationRequest):
 def stop_simulation():
     sim.is_running = False
     
-    import subprocess
-    print("Issuing aggressive namespace sandbox and claim cleanup on stop...")
-    try:
-        subprocess.run(["kubectl", "delete", "sandboxclaims,sandboxes", "--all", "-n", "barkland", "--wait=false"], check=False)
-    except Exception as e:
-        print(f"Kubectl cleanup skipped or failed: {e}")
+    if not is_local:
+        import subprocess
+        print("Issuing aggressive namespace sandbox and claim cleanup on stop...")
+        try:
+            subprocess.run(["kubectl", "delete", "sandboxclaims,sandboxes", "--all", "-n", "barkland", "--wait=false"], check=False)
+        except Exception as e:
+            print(f"Kubectl cleanup skipped or failed: {e}")
         
     return {"status": "Simulation stopped and sandboxes cleaned up"}
 

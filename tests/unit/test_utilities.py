@@ -31,13 +31,14 @@ async def test_speak_prompt_includes_sleeping_rule():
     # Mock GenAI client
     with mock.patch('google.genai.Client') as MockClient:
         mock_instance = MockClient.return_value
-        mock_instance.models.generate_content.return_value.text = '{"bark": "Zzz", "translation": "Sleeping (Dreaming of bacon)"}'
+        mock_instance.aio.models.generate_content = mock.AsyncMock()
+        mock_instance.aio.models.generate_content.return_value.text = '{"bark": "Zzz", "translation": "Sleeping (Dreaming of bacon)"}'
         
         # Call speak
         response = await agent.speak()
         
         # Verify prompt contained specific SLEEPING instructions
-        called_args = mock_instance.models.generate_content.call_args
+        called_args = mock_instance.aio.models.generate_content.call_args
         prompt_text = called_args.kwargs['contents']
         
         assert "Sir Barkley" in prompt_text
@@ -56,11 +57,12 @@ async def test_speak_prompt_includes_eating_rule():
     
     with mock.patch('google.genai.Client') as MockClient:
         mock_instance = MockClient.return_value
-        mock_instance.models.generate_content.return_value.text = '{"bark": "Crunch", "translation": "Yum"}'
+        mock_instance.aio.models.generate_content = mock.AsyncMock()
+        mock_instance.aio.models.generate_content.return_value.text = '{"bark": "Crunch", "translation": "Yum"}'
         
         await agent.speak()
         
-        called_args = mock_instance.models.generate_content.call_args
+        called_args = mock_instance.aio.models.generate_content.call_args
         prompt_text = called_args.kwargs['contents']
         
         assert "Sir Barkley" in prompt_text

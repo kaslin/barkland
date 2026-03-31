@@ -1,4 +1,5 @@
 from typing import List, Optional
+import os
 from pydantic import BaseModel, Field
 # from google_adk import LlmAgent, Tool # Assuming ADK imports
 class Tool: pass
@@ -72,8 +73,9 @@ When asked to action or bark:
                        "and the 'translation' MUST be a short, funny dream description starting with 'Sleeping (Dreaming of...)' or similar."
                    )
 
+              model_name = os.getenv("GOOGLE_GENAI_MODEL_NAME", "gemini-2.5-flash")
               response = await client.aio.models.generate_content(
-                   model='gemini-2.5-flash',
+                   model=model_name,
                    contents=prompt,
                    config=types.GenerateContentConfig(
                        response_mime_type="application/json",

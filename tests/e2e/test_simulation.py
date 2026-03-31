@@ -8,7 +8,7 @@ import asyncio
 async def test_simulation_sleep_ratio(live_server_url):
     # 1. Trigger simulation start
     async with httpx.AsyncClient() as client:
-        response = await client.post(f"{live_server_url}/api/simulation/start")
+        response = await client.post(f"{live_server_url}/api/simulation/start", json={"count": 4})
         assert response.status_code == 200
         assert "Simulation started" in response.json()["status"]
 

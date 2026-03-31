@@ -15,7 +15,8 @@ def get_free_port():
 
 async def run_single_simulation(speed_ms, num_ticks, seed):
     port = get_free_port()
-    python_exe = os.path.abspath(".venv/bin/python")
+    import sys
+    python_exe = sys.executable
     
     env = os.environ.copy()
     env["SPEED_MS"] = str(speed_ms)
@@ -47,7 +48,8 @@ async def run_single_simulation(speed_ms, num_ticks, seed):
     async with websockets.connect(ws_url) as ws:
         # Trigger simulation start AFTER connecting to WS
         async with httpx.AsyncClient() as client:
-            await client.post(f"{url}/api/simulation/start")
+            resp = await client.post(f"{url}/api/simulation/start", json={"count": 4})
+            assert resp.status_code == 200
             
         # Absorb initial frame
         while len(snapshots) < 15:
