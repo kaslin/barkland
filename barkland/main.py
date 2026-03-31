@@ -248,7 +248,29 @@ async def run_simulation(names: List[str]):
     await broadcast_state()
 
 async def broadcast_state():
-    # Simulate sandbox states for dashboard layout metrics
+    import subprocess
+    import json
+
+    # 1. Query the cluster for actual pods, filtering OUT warmpools (!agents.x-k8s.io/pool)
+    pods_by_claim = {}
+    namespace = os.getenv("NAMESPACE", "barkland")
+    try:
+        res = subprocess.run(
+            ["kubectl", "get", "pods", "-n", namespace, "-l", "!agents.x-k8s.io/pool", "-o", "json"],
+            capture_output=True, text=True, check=True
+        )
+        pod_data = json.loads(res.stdout)
+        for pod in pod_data.get("items", []):
+            p_name = pod["metadata"]["name"]
+            if "orchestrator" in p_name:
+                continue
+            # Associate by annotations or labels if SandboxClient set them, or just use name
+            # SandboxClient stores pod_name when ready. Let's record phase.
+            p_phase = pod.get("status", {}).get("phase", "Unknown")
+            pods_by_claim[p_name] = p_phase
+    except Exception as e:
+        print(f"Kubernetes pod fetch failed: {e}")
+
     sandboxes = []
     for i, dog in enumerate(sim.dogs.values()):
         status = "Created"
@@ -258,21 +280,36 @@ async def broadcast_state():
         client = sandbox_clients.get(dog.name)
         if client:
             claim_name = client.claim_name or claim_name
-            if client.is_ready():
-                 status = "Running" if dog.state != DogState.SLEEPING else "Paused"
-                 ip = client.base_url or "Dynamic IP Ready"
+            
+            # Check if this specific pod appears in our real cluster-side map
+            found_phase = "Running" # fallback
+            match_found = False
+            for p_name, phase in pods_by_claim.items():
+                if client.pod_name == p_name or (client.claim_name and client.claim_name in p_name):
+                    found_phase = phase
+                    match_found = True
+                    break
+
+            if match_found:
+                if found_phase == "Running":
+                    status = "Running" if dog.state != DogState.SLEEPING else "Paused"
+                else:
+                    status = found_phase # e.g. "Pending", "Failed"
+                ip = client.base_url or "Dynamic IP Ready"
             else:
-                 status = "Bound" if getattr(client, "sandbox_name", None) else "Creating"
+                 # It's not in our cluster pod list!
+                 if client.is_ready():
+                     status = "Running" if dog.state != DogState.SLEEPING else "Paused" # likely our filter missed it
+                     ip = client.base_url or "Dynamic IP Ready"
+                 else:
+                     status = "Bound" if getattr(client, "sandbox_name", None) else "Creating"
         else:
-            # Fallback for mock view logic or triggers allocations pending
             status = "Allocating"
             if not SandboxClient:
-                 status = "Running" if dog.state != DogState.SLEEPING else "Paused"
-                 ip = f"10.64.{i + 1}.12"
+                status = "Running" if dog.state != DogState.SLEEPING else "Paused"
+                ip = f"10.64.{i + 1}.12"
             else:
-                 # When SandboxClient is imported, but client dict is still building.
-                 # Avoid showing "Allocating" eternally when actually stopping
-                 status = "Running" if dog.state != DogState.SLEEPING else "Paused"
+                status = "Running" if dog.state != DogState.SLEEPING else "Paused"
 
         sandboxes.append({
             "dog_name": dog.name,
