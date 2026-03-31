@@ -40,6 +40,12 @@ async def get_dashboard():
         content = f.read()
         return HTMLResponse(content=content, headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
+@app.get("/api/state")
+async def get_state():
+    # Helper for simple curl testing
+    # Since broadcast_state doesn't return the json (it pushes to ws), let's just make it return a dictionary.
+    return {"status": "ok", "tick": sim.tick_count}
+
 # In-memory Simulation Instance for simplicity
 config = SimulationConfig(num_ticks=500)
 sim = SimulationLoop(config)
@@ -272,51 +278,32 @@ async def broadcast_state():
         print(f"Kubernetes pod fetch failed: {e}")
 
     sandboxes = []
-    for i, dog in enumerate(sim.dogs.values()):
-        status = "Created"
-        claim_name = f"barkland-sandbox-{dog.name.lower()}"
-        ip = "Allocating..."
-        
-        client = sandbox_clients.get(dog.name)
-        if client:
-            claim_name = client.claim_name or claim_name
+    for dog_name, dog in sim.dogs.items():
+        client = sandbox_clients.get(dog_name)
+        if not client:
+            continue
             
-            # Check if this specific pod appears in our real cluster-side map
-            found_phase = "Running" # fallback
-            match_found = False
-            for p_name, phase in pods_by_claim.items():
-                if client.pod_name == p_name or (client.claim_name and client.claim_name in p_name):
-                    found_phase = phase
-                    match_found = True
-                    break
+        # 2. Check if this client has an active pod on the cluster
+        # Using client.pod_name (or check if any of the found pods contain claim name in their name)
+        match_found = False
+        p_phase = "Unknown"
+        for p_name, phase in pods_by_claim.items():
+            if client.pod_name == p_name or (client.claim_name and client.claim_name in p_name):
+                match_found = True
+                p_phase = phase
+                break
 
-            if match_found:
-                if found_phase == "Running":
-                    status = "Running" if dog.state != DogState.SLEEPING else "Paused"
-                else:
-                    status = found_phase # e.g. "Pending", "Failed"
-                ip = client.base_url or "Dynamic IP Ready"
-            else:
-                 # It's not in our cluster pod list!
-                 if client.is_ready():
-                     status = "Running" if dog.state != DogState.SLEEPING else "Paused" # likely our filter missed it
-                     ip = client.base_url or "Dynamic IP Ready"
-                 else:
-                     status = "Bound" if getattr(client, "sandbox_name", None) else "Creating"
-        else:
-            status = "Allocating"
-            if not SandboxClient:
-                status = "Running" if dog.state != DogState.SLEEPING else "Paused"
-                ip = f"10.64.{i + 1}.12"
-            else:
-                status = "Running" if dog.state != DogState.SLEEPING else "Paused"
-
-        sandboxes.append({
-            "dog_name": dog.name,
-            "claim_name": claim_name,
-            "status": status,
-            "ip": ip
-        })
+        if match_found:
+            status = p_phase
+            if status == "Running" and dog.state == DogState.SLEEPING:
+                status = "Paused" # logical pause overrides Running display
+            
+            sandboxes.append({
+                "dog_name": dog.name,
+                "claim_name": client.claim_name or client.pod_name,
+                "status": status,
+                "ip": client.base_url or "Dynamic IP Ready"
+            })
 
     state_update = {
         "tick": sim.tick_count,
