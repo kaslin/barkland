@@ -304,6 +304,14 @@ async def broadcast_state():
                 "status": status,
                 "ip": client.base_url or "Dynamic IP Ready"
             })
+        else:
+            if getattr(client, "is_paused", False):
+                sandboxes.append({
+                    "dog_name": dog.name,
+                    "claim_name": client.claim_name or client.pod_name,
+                    "status": "Paused",
+                    "ip": "N/A (Scaled to 0)"
+                })
 
     valid_dog_names = {sb["dog_name"] for sb in sandboxes}
     
